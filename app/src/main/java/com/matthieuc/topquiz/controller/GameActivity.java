@@ -2,9 +2,12 @@ package com.matthieuc.topquiz.controller;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.PersistableBundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -28,6 +31,11 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
     private int mNumberOfQuestions;
 
     public static final String BUNDLE_EXTRA_SCORE = "BUNDLE_EXTRA_SCORE";
+    public static final String BUNDLE_STATE_SCORE = "currentScore";
+    public static final String BUNDLE_STATE_QUESTION = "currentQuestion";
+
+
+    private boolean mEnableTouchEvents;
 
     private QuestionBank mQuestionBank;
     private Question mCurrentQuestion;
@@ -39,8 +47,15 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
 
         mQuestionBank = this.generateQuestions();
 
-        mScore = 0;
-        mNumberOfQuestions = 5;
+        if(savedInstanceState != null){
+            mScore = savedInstanceState.getInt(BUNDLE_STATE_SCORE);
+            mNumberOfQuestions = savedInstanceState.getInt(BUNDLE_STATE_QUESTION);
+        }else {
+            mScore = 0;
+            mNumberOfQuestions = 5;
+        }
+        
+        mEnableTouchEvents = true;
 
         mQuestion = (TextView) findViewById(R.id.activity_game_question_txt);
         mAnswerBtn1 = (Button) findViewById(R.id.activity_game_answerbtn1);
@@ -64,7 +79,15 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
         this.displayQuestion(mCurrentQuestion);
     }
 
-        private void displayQuestion(final Question question) {
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putInt(BUNDLE_EXTRA_SCORE, mScore);
+        outState.putInt(BUNDLE_STATE_QUESTION, mNumberOfQuestions);
+
+        super.onSaveInstanceState(outState);
+    }
+
+    private void displayQuestion(final Question question) {
             mQuestion.setText(question.getQuestion());
             mAnswerBtn1.setText(question.getChoiceList().get(0));
             mAnswerBtn2.setText(question.getChoiceList().get(1));
@@ -103,14 +126,25 @@ public class GameActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(this, "Mauvaise réponse!", Toast.LENGTH_SHORT).show();
             }
 
-            if(--mNumberOfQuestions == 0){
-                //End the game
-                endGame();
-            }else{
-                mCurrentQuestion = mQuestionBank.getQuestion();
-                displayQuestion(mCurrentQuestion);
-            }
+            mEnableTouchEvents = false;
 
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mEnableTouchEvents = true;
+                    if(--mNumberOfQuestions == 0){
+                        //End the game
+                        endGame();
+                    }else{
+                        mCurrentQuestion = mQuestionBank.getQuestion();
+                        displayQuestion(mCurrentQuestion);
+                    }
+                }
+            }, 2000);
+    }
+
+    public boolean dispatchTouchEvent(MotionEvent ev){
+        return mEnableTouchEvents && super.dispatchTouchEvent(ev);
     }
 
     private void endGame(){
